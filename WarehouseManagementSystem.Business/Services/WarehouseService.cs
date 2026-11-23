@@ -124,7 +124,7 @@ public class WarehouseService : IWarehouseService
         dataTable.Columns.Add("ExpirationDate");
         dataTable.Columns.Add("DaysInWarehouse");
 
-        var stockItems = await _unitOfWork.StockItemRepository
+        var stockItems = await _unitOfWork.StockItems
             .GetAllWithIncludesAsync( si => si.Item, si => si.Warehouse);
 
         stockItems = stockItems.Where(si => si.WarehouseId == warehouseId).ToList();
