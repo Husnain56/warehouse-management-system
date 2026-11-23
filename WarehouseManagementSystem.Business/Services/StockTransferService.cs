@@ -30,7 +30,7 @@ public class StockTransferService : IStockTransferService
         if (transferDto.SourceWarehouseId == transferDto.DestinationWarehouseId)
             throw new InvalidOperationException("Source and destination warehouses cannot be the same.");
 
-        var sourceStockItems = await _unitOfWork.StockItemRepository
+        var sourceStockItems = await _unitOfWork.StockItems
             .FindAsync(s => s.WarehouseId == transferDto.SourceWarehouseId &&
                             transferDto.Items.Select(i => i.ItemId).Contains(s.ItemId));
 
@@ -46,10 +46,10 @@ public class StockTransferService : IStockTransferService
 
             // Deduct from source warehouse
             stockItem.Quantity -= transferItem.Quantity;
-            await _unitOfWork.StockItemRepository.UpdateAsync(stockItem);
+            await _unitOfWork.StockItems.UpdateAsync(stockItem);
 
             // Check if item exists in destination warehouse
-            var destinationStockItem = await _unitOfWork.StockItemRepository
+            var destinationStockItem = await _unitOfWork.StockItems
                 .FindAsync(s => s.ItemId == transferItem.ItemId &&
                                 s.WarehouseId == transferDto.DestinationWarehouseId);
 
@@ -57,7 +57,7 @@ public class StockTransferService : IStockTransferService
             {
                 var existingStock = destinationStockItem.First();
                 existingStock.Quantity += transferItem.Quantity;
-                await _unitOfWork.StockItemRepository.UpdateAsync(existingStock);
+                await _unitOfWork.StockItems.UpdateAsync(existingStock);
             }
             else
             {
@@ -69,7 +69,7 @@ public class StockTransferService : IStockTransferService
                     ProductionDate = stockItem.ProductionDate,
                     ExpirationDate = stockItem.ExpirationDate,
                 };
-                await _unitOfWork.StockItemRepository.AddAsync(newStockItem);
+                await _unitOfWork.StockItems.AddAsync(newStockItem);
             }
         }
 
@@ -81,29 +81,26 @@ public class StockTransferService : IStockTransferService
     {
         foreach (var transfer in transfers)
         {
-            var stockItem = await _unitOfWork.StockItemRepository
-                .GetQueryable() // Ensure it's IQueryable to allow EF methods
-                .Where(s => s.ItemId == transfer.ItemId
-                    && s.WarehouseId == transfer.SourceWarehouseId
-                    && s.ProductionDate == transfer.ProductionDate
-                    && s.ExpirationDate == transfer.ExpirationDate)
-                .FirstOrDefaultAsync(); // Fetch a single item
-
-            if (stockItem == null || stockItem.Quantity < transfer.TransferQuantity)
+            // removed GetQuery from here
+            var stockItem = await _unitOfWork.StockItems.GetStockItemAsync(
+                transfer.SourceWarehouseId,
+                transfer.ItemId,
+                transfer.ProductionDate,
+                transfer.ExpirationDate);
+                        if (stockItem == null || stockItem.Quantity < transfer.TransferQuantity)
             return false; // Should never happen due to UI validation, but safety check
 
             stockItem.Quantity -= transfer.TransferQuantity;
-            await _unitOfWork.StockItemRepository.UpdateAsync(stockItem);
+            await _unitOfWork.StockItems.UpdateAsync(stockItem);
 
                 // Check if item already exists in destination warehouse
-            var destinationStock = await _unitOfWork.StockItemRepository
-                .GetQueryable()
-                .Where(s => s.ItemId == transfer.ItemId
-                    && s.WarehouseId == transfer.DestinationWarehouseId
-                    && s.ProductionDate == transfer.ProductionDate
-                    && s.ExpirationDate == transfer.ExpirationDate)
-                .FirstOrDefaultAsync(); // Fetch a single item
 
+                // removed getQuery from here
+                var destinationStock = await _unitOfWork.StockItems.GetStockItemAsync(
+                    transfer.DestinationWarehouseId,
+                    transfer.ItemId,
+                    transfer.ProductionDate,
+                    transfer.ExpirationDate);
             if (destinationStock == null)
             {
                 // Create new entry
@@ -115,13 +112,13 @@ public class StockTransferService : IStockTransferService
                     ProductionDate = transfer.ProductionDate,
                     ExpirationDate = transfer.ExpirationDate
                 };
-                await _unitOfWork.StockItemRepository.AddAsync(newStock);
+                await _unitOfWork.StockItems.AddAsync(newStock);
             }
             else
             {
                 // Update existing quantity
                 destinationStock.Quantity += transfer.TransferQuantity;
-                await _unitOfWork.StockItemRepository.UpdateAsync(destinationStock);
+                await _unitOfWork.StockItems.UpdateAsync(destinationStock);
             }
         }
 

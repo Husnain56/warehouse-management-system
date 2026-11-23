@@ -71,7 +71,7 @@ public class WarehouseService : IWarehouseService
         dataTable.Columns.Add("ProductionDate");
         dataTable.Columns.Add("ExpirationDate");
 
-        var stockItems = await _unitOfWork.StockItemRepository.GetStockItemsWithItemAsync(warehouseId);
+        var stockItems = await _unitOfWork.StockItems.GetStockItemsWithItemAsync(warehouseId);
 
         foreach (var item in stockItems)
         {
