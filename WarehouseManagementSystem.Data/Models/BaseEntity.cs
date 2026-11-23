@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿// Models/BaseEntity.cs
 namespace WarehouseManagementSystem.Data.Models;
 
-public abstract class BaseEntity
+public abstract class BaseEntity : IAuditableEntity
 {
     public int Id { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
