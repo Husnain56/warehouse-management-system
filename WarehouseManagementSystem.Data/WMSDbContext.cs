@@ -37,6 +37,7 @@ public class WMSDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Ignore<StockBatchEntity>(); // refactoring 6
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(WMSDbContext).Assembly);
         modelBuilder.SeedData();
     }
