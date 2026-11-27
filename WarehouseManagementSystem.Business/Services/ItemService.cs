@@ -6,6 +6,8 @@ using WarehouseManagementSystem.Data.UOW.Interfaces;
 
 namespace WarehouseManagementSystem.Business.Services;
 
+
+
 public class ItemService : IItemService
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -63,9 +65,8 @@ public class ItemService : IItemService
 
     private async Task<Item> GetExistingItemAsync(int id)
     {
-        var item = await _unitOfWork.Items.GetByIdAsync(id);
-        if (item == null) throw new Exception("Item not found.");
-        return item;
+        return await _unitOfWork.Items.GetByIdAsync(id)
+            ?? throw new Exception("Item not found.");
     }
 
     private static void EnsureItemNameProvided(string name)
@@ -84,14 +85,12 @@ public class ItemService : IItemService
 
     private async Task InsertStockItemAsync(int itemId, int warehouseId, int quantity)
     {
-        var stockItem = new StockItem
+        await _unitOfWork.StockItems.AddAsync(new StockItem
         {
             ItemId = itemId,
             WarehouseId = warehouseId,
             Quantity = quantity
-        };
-
-        await _unitOfWork.StockItems.AddAsync(stockItem);
+        });
         await _unitOfWork.SaveAsync();
     }
 }

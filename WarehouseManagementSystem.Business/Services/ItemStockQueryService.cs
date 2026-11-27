@@ -19,48 +19,29 @@ public class ItemStockQueryService : IItemStockQueryService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<List<ItemWarehouseDto>> GetItemsInWarehousesAsync()
-    {
-        var stockItems = await _unitOfWork.StockItems
-            .GetAllWithIncludesAsync(s => s.Item, s => s.Warehouse);
+    public async Task<List<ItemWarehouseDto>> GetItemsInWarehousesAsync() =>
+        ToItemWarehouseDtos(await GetAllStockItemsWithDetailsAsync());
 
-        return stockItems.Select(ToItemWarehouseDto).ToList();
-    }
+    public async Task<List<ItemWarehouseDto>> GetItemsByWarehousesAsync(List<int> warehouseIds) =>
+        ToItemWarehouseDtos(await _unitOfWork.StockItems.GetItemsByWarehousesAsync(warehouseIds));
 
-    public async Task<List<ItemWarehouseDto>> GetItemsByWarehousesAsync(List<int> warehouseIds)
-    {
-        var stockItems = await _unitOfWork.StockItems.GetItemsByWarehousesAsync(warehouseIds);
-
-        return stockItems.Select(ToItemWarehouseDto).ToList();
-    }
-
-    public async Task<List<ItemWarehouseDto>> GetItemsByWarehouseIdAsync(int warehouseId)
-    {
-        var stockItems = await _unitOfWork.StockItems.GetStockItemsWithItemAndWarehouseAsync(warehouseId);
-
-        return stockItems.Select(ToItemWarehouseDto).ToList();
-    }
+    public async Task<List<ItemWarehouseDto>> GetItemsByWarehouseIdAsync(int warehouseId) =>
+        ToItemWarehouseDtos(await _unitOfWork.StockItems.GetStockItemsWithItemAndWarehouseAsync(warehouseId));
 
     public async Task<DataTable> GetItemsCloseToExpirationAsync(int daysThreshold)
     {
         var currentDate = DateTime.Now;
+        var stockItems = (await GetAllStockItemsWithDetailsAsync())
+            .Where(si => IsCloseToExpiration(si, currentDate, daysThreshold));
 
-        var stockItems = await _unitOfWork.StockItems
-            .GetAllWithIncludesAsync(si => si.Item, si => si.Warehouse);
-
-        var closeToExpiration = stockItems
-            .Where(si => IsCloseToExpiration(si, currentDate, daysThreshold))
-            .ToList();
-
-        var expirationTable = CreateExpirationTable();
-
-        foreach (var stockItem in closeToExpiration)
-        {
-            AddExpirationRow(expirationTable, stockItem, currentDate);
-        }
-
-        return expirationTable;
+        return BuildExpirationTable(stockItems, currentDate);
     }
+
+    private async Task<IEnumerable<StockItem>> GetAllStockItemsWithDetailsAsync() =>
+        await _unitOfWork.StockItems.GetAllWithIncludesAsync(si => si.Item, si => si.Warehouse);
+
+    private static List<ItemWarehouseDto> ToItemWarehouseDtos(IEnumerable<StockItem> stockItems) =>
+        stockItems.Select(ToItemWarehouseDto).ToList();
 
     private static ItemWarehouseDto ToItemWarehouseDto(StockItem stockItem)
     {
@@ -82,12 +63,13 @@ public class ItemStockQueryService : IItemStockQueryService
         };
     }
 
-    private static bool IsCloseToExpiration(StockItem stockItem, DateTime currentDate, int daysThreshold)
-    {
-        return (stockItem.ExpirationDate - currentDate).TotalDays <= daysThreshold;
-    }
+    private static bool IsCloseToExpiration(StockItem stockItem, DateTime currentDate, int daysThreshold) =>
+        (stockItem.ExpirationDate - currentDate).TotalDays <= daysThreshold;
 
-    private static DataTable CreateExpirationTable()
+    private static int DaysUntilExpiration(StockItem stockItem, DateTime currentDate) =>
+        (stockItem.ExpirationDate - currentDate).Days;
+
+    private static DataTable BuildExpirationTable(IEnumerable<StockItem> stockItems, DateTime currentDate)
     {
         var table = new DataTable();
         table.Columns.Add("ItemName");
@@ -96,20 +78,19 @@ public class ItemStockQueryService : IItemStockQueryService
         table.Columns.Add("ProductionDate");
         table.Columns.Add("ExpirationDate");
         table.Columns.Add("DaysUntilExpiration");
+
+        foreach (var stockItem in stockItems)
+        {
+            table.Rows.Add(
+                stockItem.Item.Name,
+                stockItem.Warehouse.Name,
+                stockItem.Quantity,
+                stockItem.ProductionDate.ToShortDateString(),
+                stockItem.ExpirationDate.ToShortDateString(),
+                DaysUntilExpiration(stockItem, currentDate)
+            );
+        }
+
         return table;
-    }
-
-    private static void AddExpirationRow(DataTable table, StockItem stockItem, DateTime currentDate)
-    {
-        var daysUntilExpiration = (stockItem.ExpirationDate - currentDate).Days;
-
-        table.Rows.Add(
-            stockItem.Item.Name,
-            stockItem.Warehouse.Name,
-            stockItem.Quantity,
-            stockItem.ProductionDate.ToShortDateString(),
-            stockItem.ExpirationDate.ToShortDateString(),
-            daysUntilExpiration
-        );
     }
 }

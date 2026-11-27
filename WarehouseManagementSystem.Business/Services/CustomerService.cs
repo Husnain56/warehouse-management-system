@@ -27,8 +27,7 @@ public class CustomerService : ICustomerService
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Customer name cannot be empty.");
 
-        var customer = new Customer { Name = name, Phone = phone, Email = email };
-        await _unitOfWork.Customers.AddAsync(customer);
+        await _unitOfWork.Customers.AddAsync(new Customer { Name = name, Phone = phone, Email = email });
         await _unitOfWork.SaveAsync();
     }
 
@@ -54,8 +53,7 @@ public class CustomerService : ICustomerService
 
     private async Task<Customer> GetExistingCustomerAsync(int id)
     {
-        var customer = await _unitOfWork.Customers.GetByIdAsync(id);
-        if (customer == null) throw new Exception("Customer not found.");
-        return customer;
+        return await _unitOfWork.Customers.GetByIdAsync(id)
+            ?? throw new Exception("Customer not found.");
     }
 }
