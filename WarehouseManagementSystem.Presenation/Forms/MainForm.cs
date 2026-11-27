@@ -83,7 +83,7 @@ public partial class MainForm : Form
     private void btnWarehouse_Click(object sender, EventArgs e)
     {
         ActivateBtn(sender);
-        OpenChildForm(new WarehouseForm());
+        OpenChildForm(_formFactory.CreateWarehouseForm());
     }
 
     private void btnItems_Click(object sender, EventArgs e)
@@ -95,7 +95,7 @@ public partial class MainForm : Form
     private void btnSupplier_Click(object sender, EventArgs e)
     {
         ActivateBtn(sender);
-        OpenChildForm(new SupplierForm());
+        OpenChildForm(_formFactory.CreateSupplierForm());
     }
 
     private void btnCustomer_Click(object sender, EventArgs e)

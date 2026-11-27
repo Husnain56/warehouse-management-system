@@ -11,6 +11,12 @@ internal sealed class FormFactory
     public CustomerForm CreateCustomerForm() =>
         new(new CustomerService(CreateUnitOfWork()));
 
+    public SupplierForm CreateSupplierForm() =>
+        new(new SupplierService(CreateUnitOfWork()));
+
+    public WarehouseForm CreateWarehouseForm() =>
+        new(new WarehouseService(CreateUnitOfWork()));
+
     private static IUnitOfWork CreateUnitOfWork() =>
         new UnitOfWork(new WMSDbContext());
 }

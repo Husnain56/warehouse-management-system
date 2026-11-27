@@ -43,20 +43,6 @@ public partial class CustomerForm : Form
         txtEmail.Text = customer.Email;
     }
 
-    private int? GetSelectedCustomerId() =>
-        dgvCustomers.SelectedRows.Count > 0
-            ? Convert.ToInt32(dgvCustomers.SelectedRows[0].Cells["Id"].Value)
-            : null;
-
-    private static void ShowError(Exception ex) =>
-        MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-
-    private static void ShowSuccess(string message) =>
-        MessageBox.Show(message, "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-    private static bool ConfirmDelete() =>
-        MessageBox.Show("Are you sure you want to delete this customer?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes;
-
     private async void CustomerForm_Load(object sender, EventArgs e)
     {
         await LoadCustomers();
@@ -72,48 +58,48 @@ public partial class CustomerForm : Form
         }
         catch (Exception ex)
         {
-            ShowError(ex);
+            Dialogs.ShowError(ex);
         }
     }
 
     private async void btnUpdate_Click(object sender, EventArgs e)
     {
-        if (GetSelectedCustomerId() is not int id) return;
+        if (dgvCustomers.GetSelectedId() is not int id) return;
 
         try
         {
             await _customerService.UpdateCustomerAsync(id, txtName.Text, txtPhone.Text, txtEmail.Text);
-            ShowSuccess("Customer updated successfully!");
+            Dialogs.ShowSuccess("Customer updated successfully!");
             await LoadCustomers();
             ResetFormInput();
         }
         catch (Exception ex)
         {
-            ShowError(ex);
+            Dialogs.ShowError(ex);
         }
     }
 
     private async void dgvCustomers_Click(object sender, EventArgs e)
     {
-        if (GetSelectedCustomerId() is not int id) return;
+        if (dgvCustomers.GetSelectedId() is not int id) return;
 
         await FillInputsFromCustomerAsync(id);
     }
 
     private async void btnDelete_Click(object sender, EventArgs e)
     {
-        if (GetSelectedCustomerId() is not int id) return;
-        if (!ConfirmDelete()) return;
+        if (dgvCustomers.GetSelectedId() is not int id) return;
+        if (!Dialogs.Confirm("Are you sure you want to delete this customer?")) return;
 
         try
         {
             await _customerService.DeleteCustomerAsync(id);
-            ShowSuccess("customer deleted successfully!");
+            Dialogs.ShowSuccess("customer deleted successfully!");
             await LoadCustomers();
         }
         catch (Exception ex)
         {
-            ShowError(ex);
+            Dialogs.ShowError(ex);
         }
     }
 }

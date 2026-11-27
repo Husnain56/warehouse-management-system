@@ -1,38 +1,31 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using WarehouseManagementSystem.Business.Services;
-using WarehouseManagementSystem.Data;
-using WarehouseManagementSystem.Data.UOW;
-using WarehouseManagementSystem.Data.UOW.Interfaces;
+﻿using WarehouseManagementSystem.Business.Interfaces;
 
 namespace WarehouseManagementSystem.Presenation.Forms;
 
 public partial class WarehouseForm : Form
 {
-    private readonly WarehouseService _warehouseService;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IWarehouseService _warehouseService;
 
-    public WarehouseForm()
+    public WarehouseForm(IWarehouseService warehouseService)
     {
         InitializeComponent();
-        _unitOfWork = new UnitOfWork(new WMSDbContext());
-        _warehouseService = new WarehouseService(_unitOfWork);
-        LoadWarehouses();
+        _warehouseService = warehouseService;
+    }
+
+    protected override async void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        await LoadWarehouses();
     }
 
     private async Task LoadWarehouses()
     {
-        var warehouseList = await _warehouseService.GetAllWarehousesAsync();
+        dgvWarehouses.DataSource = await _warehouseService.GetAllWarehousesAsync();
+        ConfigureGrid();
+    }
 
-        dgvWarehouses.DataSource = warehouseList;
-
+    private void ConfigureGrid()
+    {
         dgvWarehouses.Columns["Id"].Visible = false;
         dgvWarehouses.AllowUserToDeleteRows = false;
         dgvWarehouses.ReadOnly = true;
@@ -45,7 +38,7 @@ public partial class WarehouseForm : Form
         txtManager.Text = string.Empty;
     }
 
-    private async Task FillFrom(int id)
+    private async Task FillInputsFromWarehouseAsync(int id)
     {
         var warehouse = await _warehouseService.GetWarehouseByIdAsync(id);
         txtManager.Text = warehouse.Manager;
@@ -58,65 +51,53 @@ public partial class WarehouseForm : Form
         try
         {
             await _warehouseService.AddWarehouseAsync(txtName.Text, txtAddress.Text, txtManager.Text);
-            //MessageBox.Show("Warehouse added successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            LoadWarehouses(); // Refresh DataGridView
+            await LoadWarehouses();
             ResetFormInput();
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Dialogs.ShowError(ex);
         }
     }
 
     private async void btnUpdate_Click(object sender, EventArgs e)
     {
-        if (dgvWarehouses.SelectedRows.Count > 0)
-        {
-            int id = Convert.ToInt32(dgvWarehouses.SelectedRows[0].Cells["Id"].Value);
+        if (dgvWarehouses.GetSelectedId() is not int id) return;
 
-            try
-            {
-                await _warehouseService.UpdateWarehouseAsync(id, txtName.Text, txtAddress.Text, txtManager.Text);
-                MessageBox.Show("Warehouse updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                await LoadWarehouses();
-                ResetFormInput();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+        try
+        {
+            await _warehouseService.UpdateWarehouseAsync(id, txtName.Text, txtAddress.Text, txtManager.Text);
+            Dialogs.ShowSuccess("Warehouse updated successfully!");
+            await LoadWarehouses();
+            ResetFormInput();
+        }
+        catch (Exception ex)
+        {
+            Dialogs.ShowError(ex);
         }
     }
 
     private async void btnDelete_Click(object sender, EventArgs e)
     {
-        if (dgvWarehouses.SelectedRows.Count > 0)
-        {
-            int id = Convert.ToInt32(dgvWarehouses.SelectedRows[0].Cells["Id"].Value);
+        if (dgvWarehouses.GetSelectedId() is not int id) return;
+        if (!Dialogs.Confirm("Are you sure you want to delete this warehouse?")) return;
 
-            var confirm = MessageBox.Show("Are you sure you want to delete this warehouse?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (confirm == DialogResult.Yes)
-            {
-                try
-                {
-                    await _warehouseService.DeleteWarehouseAsync(id);
-                    MessageBox.Show("Warehouse deleted successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    LoadWarehouses();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
+        try
+        {
+            await _warehouseService.DeleteWarehouseAsync(id);
+            Dialogs.ShowSuccess("Warehouse deleted successfully!");
+            await LoadWarehouses();
+        }
+        catch (Exception ex)
+        {
+            Dialogs.ShowError(ex);
         }
     }
 
-    private void dgvWarehouses_Click(object sender, EventArgs e)
+    private async void dgvWarehouses_Click(object sender, EventArgs e)
     {
-        if (dgvWarehouses.SelectedRows.Count > 0)
-        {
-            int id = Convert.ToInt32(dgvWarehouses.SelectedRows[0].Cells["Id"].Value);
-            FillFrom(id);
-        }
+        if (dgvWarehouses.GetSelectedId() is not int id) return;
+
+        await FillInputsFromWarehouseAsync(id);
     }
 }
