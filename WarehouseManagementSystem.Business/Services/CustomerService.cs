@@ -19,7 +19,7 @@ public class CustomerService : ICustomerService
     public async Task<IEnumerable<Customer>> GetAllCustomersAsync() =>
         await _unitOfWork.Customers.GetAllAsync();
 
-    public async Task<Customer> GetCustomerByIdAsync(int id) => 
+    public async Task<Customer> GetCustomerByIdAsync(int id) =>
         await _unitOfWork.Customers.GetByIdAsync(id);
 
     public async Task AddCustomerAsync(string name, string phone, string email)
@@ -34,8 +34,7 @@ public class CustomerService : ICustomerService
 
     public async Task UpdateCustomerAsync(int id, string name, string phone, string email)
     {
-        var customer = await _unitOfWork.Customers.GetByIdAsync(id);
-        if (customer == null) throw new Exception("Customer not found.");
+        var customer = await GetExistingCustomerAsync(id);
 
         customer.Name = name;
         customer.Phone = phone;
@@ -47,10 +46,16 @@ public class CustomerService : ICustomerService
 
     public async Task DeleteCustomerAsync(int id)
     {
-        var customer = await _unitOfWork.Customers.GetByIdAsync(id);
-        if (customer == null) throw new Exception("Customer not found.");
+        var customer = await GetExistingCustomerAsync(id);
 
         await _unitOfWork.Customers.DeleteAsync(customer);
         await _unitOfWork.SaveAsync();
+    }
+
+    private async Task<Customer> GetExistingCustomerAsync(int id)
+    {
+        var customer = await _unitOfWork.Customers.GetByIdAsync(id);
+        if (customer == null) throw new Exception("Customer not found.");
+        return customer;
     }
 }
