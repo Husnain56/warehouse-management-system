@@ -14,14 +14,15 @@ namespace WarehouseManagementSystem.Presenation;
 
 public partial class MainForm : Form
 {
+    private readonly FormFactory _formFactory;
     private IconButton currentBtn;
     private Panel leftBorderPanal;
     private Form currentChildForm;
-    //private IconButton iconCurrentChild;
 
-    public MainForm()
+    internal MainForm(FormFactory formFactory)
     {
         InitializeComponent();
+        _formFactory = formFactory;
         leftBorderPanal = new Panel();
         leftBorderPanal.Size = new Size(7, 60);
         SidePanal.Controls.Add(leftBorderPanal);
@@ -29,38 +30,40 @@ public partial class MainForm : Form
 
     private void ActivateBtn(object sender)
     {
-        if (sender != null)
-        {
-            DisableBtn();
+        if (sender == null) return;
 
-            // current btn styling
-            currentBtn = (IconButton)sender;
-            currentBtn.BackColor = Color.FromArgb(19, 48, 48, 48);
-            currentBtn.IconColor = Color.FromArgb(192, 0, 0);
-            currentBtn.TextAlign = ContentAlignment.MiddleCenter;
-            currentBtn.TextImageRelation = TextImageRelation.TextBeforeImage;
-            currentBtn.ImageAlign = ContentAlignment.MiddleRight;
+        DisableBtn();
+        currentBtn = (IconButton)sender;
+        StyleActiveButton();
+        ShowLeftBorderBeside(currentBtn);
+    }
 
-            // left border styling
-            leftBorderPanal.BackColor = Color.FromArgb(192, 0, 0);
-            leftBorderPanal.Location = new Point(0, currentBtn.Location.Y);
-            leftBorderPanal.Visible = true;
-            leftBorderPanal.BringToFront();
+    private void StyleActiveButton()
+    {
+        currentBtn.BackColor = Color.FromArgb(19, 48, 48, 48);
+        currentBtn.IconColor = Color.FromArgb(192, 0, 0);
+        currentBtn.TextAlign = ContentAlignment.MiddleCenter;
+        currentBtn.TextImageRelation = TextImageRelation.TextBeforeImage;
+        currentBtn.ImageAlign = ContentAlignment.MiddleRight;
+    }
 
-            // iconCurrentChild.IconChar = currentBtn.IconChar;
-        }
+    private void ShowLeftBorderBeside(IconButton button)
+    {
+        leftBorderPanal.BackColor = Color.FromArgb(192, 0, 0);
+        leftBorderPanal.Location = new Point(0, button.Location.Y);
+        leftBorderPanal.Visible = true;
+        leftBorderPanal.BringToFront();
     }
 
     private void DisableBtn()
     {
-        if (currentBtn != null)
-        {
-            currentBtn.BackColor = Color.Black;
-            currentBtn.IconColor = Color.WhiteSmoke;
-            currentBtn.TextAlign = ContentAlignment.MiddleLeft;
-            currentBtn.TextImageRelation = TextImageRelation.ImageBeforeText;
-            currentBtn.ImageAlign = ContentAlignment.MiddleLeft;
-        }
+        if (currentBtn == null) return;
+
+        currentBtn.BackColor = Color.Black;
+        currentBtn.IconColor = Color.WhiteSmoke;
+        currentBtn.TextAlign = ContentAlignment.MiddleLeft;
+        currentBtn.TextImageRelation = TextImageRelation.ImageBeforeText;
+        currentBtn.ImageAlign = ContentAlignment.MiddleLeft;
     }
 
     private void OpenChildForm(Form child)
@@ -98,7 +101,7 @@ public partial class MainForm : Form
     private void btnCustomer_Click(object sender, EventArgs e)
     {
         ActivateBtn(sender);
-        OpenChildForm(new CustomerForm());
+        OpenChildForm(_formFactory.CreateCustomerForm());
     }
 
     private void btnSupplyOrder_Click(object sender, EventArgs e)

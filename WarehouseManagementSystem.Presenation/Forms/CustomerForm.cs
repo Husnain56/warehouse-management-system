@@ -1,37 +1,26 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using WarehouseManagementSystem.Business.Interfaces;
-using WarehouseManagementSystem.Business.Services;
-using WarehouseManagementSystem.Data;
-using WarehouseManagementSystem.Data.UOW;
-using WarehouseManagementSystem.Data.UOW.Interfaces;
+﻿using WarehouseManagementSystem.Business.Interfaces;
 
 namespace WarehouseManagementSystem.Presenation.Forms;
 
 public partial class CustomerForm : Form
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly CustomerService _customerService;
-    public CustomerForm()
+    private readonly ICustomerService _customerService;
+
+    public CustomerForm(ICustomerService customerService)
     {
         InitializeComponent();
 
-        _unitOfWork = new UnitOfWork(new WMSDbContext());
-        _customerService = new CustomerService(_unitOfWork);
+        _customerService = customerService;
     }
 
     private async Task LoadCustomers()
     {
-        var customers = await _customerService.GetAllCustomersAsync();
+        dgvCustomers.DataSource = await _customerService.GetAllCustomersAsync();
+        ConfigureGrid();
+    }
 
-        dgvCustomers.DataSource = customers;
+    private void ConfigureGrid()
+    {
         dgvCustomers.Columns["Id"].Visible = false;
         dgvCustomers.Columns["WithdrawalOrders"].Visible = false;
         dgvCustomers.AllowUserToAddRows = false;
@@ -46,13 +35,27 @@ public partial class CustomerForm : Form
         txtPhone.Text = string.Empty;
     }
 
-    private async Task FillFrom(int id)
+    private async Task FillInputsFromCustomerAsync(int id)
     {
         var customer = await _customerService.GetCustomerByIdAsync(id);
         txtName.Text = customer.Name;
         txtPhone.Text = customer.Phone;
         txtEmail.Text = customer.Email;
     }
+
+    private int? GetSelectedCustomerId() =>
+        dgvCustomers.SelectedRows.Count > 0
+            ? Convert.ToInt32(dgvCustomers.SelectedRows[0].Cells["Id"].Value)
+            : null;
+
+    private static void ShowError(Exception ex) =>
+        MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+    private static void ShowSuccess(string message) =>
+        MessageBox.Show(message, "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+    private static bool ConfirmDelete() =>
+        MessageBox.Show("Are you sure you want to delete this customer?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes;
 
     private async void CustomerForm_Load(object sender, EventArgs e)
     {
@@ -69,60 +72,48 @@ public partial class CustomerForm : Form
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            ShowError(ex);
         }
     }
 
     private async void btnUpdate_Click(object sender, EventArgs e)
     {
-        if (dgvCustomers.SelectedRows.Count > 0)
+        if (GetSelectedCustomerId() is not int id) return;
+
+        try
         {
-            int id = Convert.ToInt32(dgvCustomers.SelectedRows[0].Cells["Id"].Value);
-
-            try
-            {
-                await _customerService.UpdateCustomerAsync(id, txtName.Text, txtPhone.Text, txtEmail.Text);
-                MessageBox.Show("Customer updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                await LoadCustomers();
-                ResetFormInput();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-
-            }
+            await _customerService.UpdateCustomerAsync(id, txtName.Text, txtPhone.Text, txtEmail.Text);
+            ShowSuccess("Customer updated successfully!");
+            await LoadCustomers();
+            ResetFormInput();
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex);
         }
     }
 
     private async void dgvCustomers_Click(object sender, EventArgs e)
     {
-        if (dgvCustomers.SelectedRows.Count > 0)
-        {
-            int id = Convert.ToInt32(dgvCustomers.SelectedRows[0].Cells["Id"].Value);
-            await FillFrom(id);
-        }
+        if (GetSelectedCustomerId() is not int id) return;
+
+        await FillInputsFromCustomerAsync(id);
     }
 
     private async void btnDelete_Click(object sender, EventArgs e)
     {
-        if (dgvCustomers.SelectedRows.Count > 0)
-        {
-            int id = Convert.ToInt32(dgvCustomers.SelectedRows[0].Cells["Id"].Value);
+        if (GetSelectedCustomerId() is not int id) return;
+        if (!ConfirmDelete()) return;
 
-            var confirm = MessageBox.Show("Are you sure you want to delete this customer?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (confirm == DialogResult.Yes)
-            {
-                try
-                {
-                    await _customerService.DeleteCustomerAsync(id);
-                    MessageBox.Show("customer deleted successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    await LoadCustomers();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
+        try
+        {
+            await _customerService.DeleteCustomerAsync(id);
+            ShowSuccess("customer deleted successfully!");
+            await LoadCustomers();
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex);
         }
     }
 }
