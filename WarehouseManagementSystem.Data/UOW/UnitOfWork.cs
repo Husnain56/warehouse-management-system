@@ -18,7 +18,6 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<SupplyOrderDetail> SupplyOrderDetails { get; }
     public IWithdrawalOrderRepository WithdrawalOrders { get; }
     public IRepository<StockTransfer> StockTransfers { get; }
-    public IStockItemRepository StockItemRepository { get; }
 
     public UnitOfWork(WMSDbContext context)
     {
@@ -31,7 +30,6 @@ public class UnitOfWork : IUnitOfWork
         SupplyOrderDetails = new Repository<SupplyOrderDetail>(_context);
         WithdrawalOrders = new WithdrawalOrderRepository(_context);
         StockTransfers = new Repository<StockTransfer>(_context);
-        StockItemRepository = new StockItemRepository(_context);
         StockItems = new StockItemRepository(_context);
     }
 

@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using WarehouseManagementSystem.Data.Models;
 
@@ -11,6 +9,7 @@ public interface IStockItemRepository : IRepository<StockItem>
 {
     Task<List<StockItem>> GetStockWithItemAndWarehouseAsync();
     Task<List<StockItem>> GetItemsByWarehousesAsync(List<int> warehouseIds);
-    IQueryable<StockItem> GetQueryable();
     Task<IEnumerable<StockItem>> GetStockItemsWithItemAsync(int warehouseId);
+    Task<List<StockItem>> GetStockItemsWithItemAndWarehouseAsync(int warehouseId);
+    Task<StockItem> GetStockItemAsync(int warehouseId, int itemId, DateTime productionDate, DateTime expirationDate);
 }

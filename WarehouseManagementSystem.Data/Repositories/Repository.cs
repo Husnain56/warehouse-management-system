@@ -20,8 +20,8 @@ public class Repository<T> : IRepository<T>, IDisposable where T : class
         _dbSet = _context.Set<T>();
     }
 
-    public async Task<T> GetByIdAsync(int id) =>
-        await _dbSet.FirstOrDefaultAsync(e => EF.Property<int>(e, "Id") == id);
+    public async Task<T> GetByIdAsync(params object[] keyValues) =>
+     await _dbSet.FindAsync(keyValues);
 
     public async Task<IEnumerable<T>> GetAllAsync() =>
         await _dbSet.ToListAsync();

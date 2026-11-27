@@ -71,7 +71,7 @@ public class WarehouseService : IWarehouseService
         dataTable.Columns.Add("ProductionDate");
         dataTable.Columns.Add("ExpirationDate");
 
-        var stockItems = await _unitOfWork.StockItemRepository.GetStockItemsWithItemAsync(warehouseId);
+        var stockItems = await _unitOfWork.StockItems.GetStockItemsWithItemAsync(warehouseId);
 
         foreach (var item in stockItems)
         {
@@ -124,7 +124,7 @@ public class WarehouseService : IWarehouseService
         dataTable.Columns.Add("ExpirationDate");
         dataTable.Columns.Add("DaysInWarehouse");
 
-        var stockItems = await _unitOfWork.StockItemRepository
+        var stockItems = await _unitOfWork.StockItems
             .GetAllWithIncludesAsync( si => si.Item, si => si.Warehouse);
 
         stockItems = stockItems.Where(si => si.WarehouseId == warehouseId).ToList();

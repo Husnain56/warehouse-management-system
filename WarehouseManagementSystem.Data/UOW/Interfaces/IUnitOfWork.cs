@@ -14,7 +14,6 @@ public interface IUnitOfWork : IDisposable
     public ISupplyOrderRepository SupplyOrders { get; }
     public IRepository<SupplyOrderDetail> SupplyOrderDetails { get; }
     public IRepository<StockTransfer> StockTransfers { get; }
-    public IStockItemRepository StockItemRepository { get; }
     public IWithdrawalOrderRepository WithdrawalOrders { get; }
     Task<IDbContextTransaction> BeginTransactionAsync();
     Task SaveAsync();

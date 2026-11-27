@@ -65,7 +65,8 @@ public class WithdrawalOrderService : IWithdrawalOrderService
     {
         foreach (var item in orderDto.Items)
         {
-            var stockItem = await _unitOfWork.StockItems.GetByIdAsync(item.ItemId);
+            // Refactoring 5
+            var stockItem = await _unitOfWork.StockItems.GetByIdAsync(orderDto.WarehouseId, item.ItemId);
 
             if (stockItem == null || stockItem.Quantity < item.Quantity)
                 throw new InvalidOperationException($"Insufficient quantity for item: {item.ItemName}");

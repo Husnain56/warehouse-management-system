@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
 namespace WarehouseManagementSystem.Data.Models;
 
-public class Unit
+// Now it inherits from BaseEntity to get the id instead of creating by itself
+public class Unit : BaseEntity
 {
-    public int Id { get; set; }
     public string Name { get; set; }
     public ICollection<ItemUnit> ItemUnits { get; set; } = new List<ItemUnit>();
 }
