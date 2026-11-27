@@ -16,36 +16,34 @@ public class SupplierService : ISupplierService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<IEnumerable<Supplier>> GetAllSuppliersAsync() => 
+    public async Task<IEnumerable<Supplier>> GetAllSuppliersAsync() =>
         await _unitOfWork.Suppliers.GetAllAsync();
 
-    public async Task<Supplier> GetSupplierByIdAsync(int id) => 
+    public async Task<Supplier> GetSupplierByIdAsync(int id) =>
         await _unitOfWork.Suppliers.GetByIdAsync(id);
 
-    public async Task AddSupplierAsync(string name, string phone, string email, 
+    public async Task AddSupplierAsync(string name, string phone, string email,
         string fax, string mobile, string website)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Supplier name cannot be empty.");
 
-        var supplier = new Supplier 
-        { 
-            Name = name, 
-            Phone = phone, 
-            Email = email, 
+        await _unitOfWork.Suppliers.AddAsync(new Supplier
+        {
+            Name = name,
+            Phone = phone,
+            Email = email,
             Fax = fax,
             Mobile = mobile,
-            Website = website 
-        };
-        await _unitOfWork.Suppliers.AddAsync(supplier);
+            Website = website
+        });
         await _unitOfWork.SaveAsync();
     }
 
     public async Task UpdateSupplierAsync(int id, string name, string phone, string email,
         string fax, string mobile, string website)
     {
-        var supplier = await _unitOfWork.Suppliers.GetByIdAsync(id);
-        if (supplier == null) throw new Exception("Supplier not found.");
+        var supplier = await GetExistingSupplierAsync(id);
 
         supplier.Name = name;
         supplier.Phone = phone;
@@ -58,10 +56,15 @@ public class SupplierService : ISupplierService
 
     public async Task DeleteSupplierAsync(int id)
     {
-        var supplier = await _unitOfWork.Suppliers.GetByIdAsync(id);
-        if (supplier == null) throw new Exception("Supplier not found.");
+        var supplier = await GetExistingSupplierAsync(id);
 
         await _unitOfWork.Suppliers.DeleteAsync(supplier);
         await _unitOfWork.SaveAsync();
+    }
+
+    private async Task<Supplier> GetExistingSupplierAsync(int id)
+    {
+        return await _unitOfWork.Suppliers.GetByIdAsync(id)
+            ?? throw new Exception("Supplier not found.");
     }
 }
