@@ -124,24 +124,24 @@ public partial class MainForm : Form
     private void btnWarehousRepot_Click(object sender, EventArgs e)
     {
         ActivateBtn(sender);
-        OpenChildForm(new WarehouseStateReportForm());
+        OpenChildForm(_formFactory.CreateWarehouseStateReportForm());
     }
 
     private void iconButton1_Click(object sender, EventArgs e)
     {
         ActivateBtn(sender);
-        OpenChildForm(new WarehousesItemsReportForm());
+        OpenChildForm(_formFactory.CreateWarehousesItemsReportForm());
     }
 
     private void btnItemsInWarehousePeriodReport_Click(object sender, EventArgs e)
     {
         ActivateBtn(sender);
-        OpenChildForm(new ItemsInWarehousePeriodReportForm());
+        OpenChildForm(_formFactory.CreateItemsInWarehousePeriodReportForm());
     }
 
     private void btnItemsCloseToExpiration_Click(object sender, EventArgs e)
     {
         ActivateBtn(sender);
-        OpenChildForm(new ItemsCloseToExpirationReport());
+        OpenChildForm(_formFactory.CreateItemsCloseToExpirationReportForm());
     }
 }

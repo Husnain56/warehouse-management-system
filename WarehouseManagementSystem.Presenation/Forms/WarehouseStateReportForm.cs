@@ -1,72 +1,49 @@
-﻿using AspNetCore.Reporting;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using WarehouseManagementSystem.Business.Services;
-using WarehouseManagementSystem.Data;
-using WarehouseManagementSystem.Data.UOW;
-using WarehouseManagementSystem.Data.UOW.Interfaces;
+﻿using WarehouseManagementSystem.Business.Interfaces;
 
-namespace WarehouseManagementSystem.Presenation.Forms
+namespace WarehouseManagementSystem.Presenation.Forms;
+
+public partial class WarehouseStateReportForm : Form
 {
-    public partial class WarehouseStateReportForm : Form
+    private readonly IWarehouseService _warehouseService;
+    private readonly IWarehouseReportService _warehouseReportService;
+
+    public WarehouseStateReportForm(IWarehouseService warehouseService, IWarehouseReportService warehouseReportService)
     {
-        private readonly WarehouseService _warehouseService;
-        private readonly WarehouseReportService _warehouseReportService;
-        private readonly IUnitOfWork _unitOfWork;
+        InitializeComponent();
+        _warehouseService = warehouseService;
+        _warehouseReportService = warehouseReportService;
+    }
 
-        public WarehouseStateReportForm()
+    protected override async void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        await LoadWarehouses();
+    }
+
+    private async Task LoadWarehouses()
+    {
+        comboBoxWarehouses.DataSource = await _warehouseService.GetAllWarehousesAsync();
+        comboBoxWarehouses.DisplayMember = "Name";
+        comboBoxWarehouses.ValueMember = "Id";
+    }
+
+    private async void btnGenerateReport_Click_1(object sender, EventArgs e)
+    {
+        try
         {
-            InitializeComponent();
-            _unitOfWork = new UnitOfWork(new WMSDbContext());
-            _warehouseService = new WarehouseService(_unitOfWork);
-            _warehouseReportService = new WarehouseReportService(_unitOfWork);
-            LoadWarehouses();
+            int warehouseId = (int)comboBoxWarehouses.SelectedValue;
+
+            var pdfPath = ReportPdfWriter.Write(
+                "WarehouseStatusReport.rdlc",
+                "WarehouseStatusDataSet",
+                await _warehouseReportService.GetWarehouseStatusReport(warehouseId),
+                $"WarehouseStatusReport_{warehouseId}.pdf");
+
+            Dialogs.ReportGenerated(pdfPath);
         }
-
-        private async Task LoadWarehouses()
+        catch (Exception ex)
         {
-            var warehouses = await _warehouseService.GetAllWarehousesAsync();
-            comboBoxWarehouses.DataSource = warehouses;
-            comboBoxWarehouses.DisplayMember = "Name";
-            comboBoxWarehouses.ValueMember = "Id";
-        }
-
-        private async void btnGenerateReport_Click_1(object sender, EventArgs e)
-        {
-            try
-            {
-                int warehouseId = (int)comboBoxWarehouses.SelectedValue;
-
-                // Load the RDLC file
-                string reportPath = Path.Combine(Application.StartupPath, @"E:\ITI\Projects\WarehouseManagementSystem\WarehouseManagementSystem.Presenation\Reports\WarehouseStatusReport.rdlc");
-                LocalReport report = new LocalReport(reportPath);
-
-                // Get the data from the service
-                DataTable dataTable = await _warehouseReportService.GetWarehouseStatusReport(warehouseId);
-
-                // Add the data source to the report
-                report.AddDataSource("WarehouseStatusDataSet", dataTable);
-
-                // Render the report to PDF
-                var result = report.Execute(RenderType.Pdf);
-
-                // Save the PDF file
-                string pdfPath = Path.Combine(Application.StartupPath, $"WarehouseStatusReport_{warehouseId}.pdf");
-                File.WriteAllBytes(pdfPath, result.MainStream);
-
-                MessageBox.Show($"Report generated successfully!\nSaved at: {pdfPath}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error generating report: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            Dialogs.ReportFailed(ex);
         }
     }
 }

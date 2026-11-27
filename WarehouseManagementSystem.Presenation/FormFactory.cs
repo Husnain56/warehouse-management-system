@@ -47,6 +47,36 @@ internal sealed class FormFactory
             new WarehouseService(unitOfWork));
     }
 
+    public WarehouseStateReportForm CreateWarehouseStateReportForm()
+    {
+        var unitOfWork = CreateUnitOfWork();
+
+        return new WarehouseStateReportForm(
+            new WarehouseService(unitOfWork),
+            new WarehouseReportService(unitOfWork));
+    }
+
+    public WarehousesItemsReportForm CreateWarehousesItemsReportForm()
+    {
+        var unitOfWork = CreateUnitOfWork();
+
+        return new WarehousesItemsReportForm(
+            new WarehouseService(unitOfWork),
+            new WarehouseReportService(unitOfWork));
+    }
+
+    public ItemsInWarehousePeriodReportForm CreateItemsInWarehousePeriodReportForm()
+    {
+        var unitOfWork = CreateUnitOfWork();
+
+        return new ItemsInWarehousePeriodReportForm(
+            new WarehouseService(unitOfWork),
+            new WarehouseReportService(unitOfWork));
+    }
+
+    public ItemsCloseToExpirationReport CreateItemsCloseToExpirationReportForm() =>
+        new(new ItemStockQueryService(CreateUnitOfWork()));
+
     private static IUnitOfWork CreateUnitOfWork() =>
         new UnitOfWork(new WMSDbContext());
 }

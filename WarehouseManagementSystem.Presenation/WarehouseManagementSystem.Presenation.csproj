@@ -81,4 +81,11 @@
     <Folder Include="bin\Debug\" />
   </ItemGroup>
 
+	<ItemGroup>
+		<None Update="Reports\*.rdlc">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
 </Project>
+
