@@ -18,76 +18,27 @@ public class WithdrawalOrderService : IWithdrawalOrderService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<IEnumerable<WithdrawalOrderDTO>> GetAllWithdrawalOrdersAsync()
-    {
-        var orders = await _unitOfWork.WithdrawalOrders.GetAllAsync();
-        var result = orders.Select(order => new WithdrawalOrderDTO
-        {
-            OrderId = order.Id,
-            OrderDate = order.OrderDate,
-            WarehouseId = order.WarehouseId,
-            WarehouseName = order.Warehouse?.Name,
-            Items = order.WithdrawalOrderDetails.Select(detail => new WithdrawalOrderItemDTO
-            {
-                ItemId = detail.ItemId,
-                ItemName = detail.Item?.Name,
-                Quantity = detail.Quantity
-            }).ToList()
-        });
-
-        return result;
-    }
+    public async Task<IEnumerable<WithdrawalOrderDTO>> GetAllWithdrawalOrdersAsync() =>
+        ToDtos(await _unitOfWork.WithdrawalOrders.GetAllAsync());
 
     public async Task<WithdrawalOrderDTO> GetWithdrawalOrderByIdAsync(int id)
     {
         var order = await _unitOfWork.WithdrawalOrders.GetByIdAsync(id);
-        if (order == null) return null;
 
-        var result = new WithdrawalOrderDTO
-        {
-            OrderId = order.Id,
-            OrderDate = order.OrderDate,
-            WarehouseId = order.WarehouseId,
-            WarehouseName = order.Warehouse?.Name,
-            Items = order.WithdrawalOrderDetails.Select(detail => new WithdrawalOrderItemDTO
-            {
-                ItemId = detail.ItemId,
-                ItemName = detail.Item?.Name,
-                Quantity = detail.Quantity
-            }).ToList()
-        };
-
-        return result;
+        return order == null ? null : ToDto(order);
     }
-
 
     public async Task CreateOrderAsync(WithdrawalOrderDTO orderDto)
     {
         foreach (var item in orderDto.Items)
-        {
-            // Refactoring 5
-            var stockItem = await _unitOfWork.StockItems.GetByIdAsync(orderDto.WarehouseId, item.ItemId);
+            await DeductStockAsync(orderDto.WarehouseId, item);
 
-            if (stockItem == null || stockItem.Quantity < item.Quantity)
-                throw new InvalidOperationException($"Insufficient quantity for item: {item.ItemName}");
-
-            // Deduct the quantity
-            stockItem.Quantity -= item.Quantity;
-            await _unitOfWork.StockItems.UpdateAsync(stockItem);
-        }
-
-        var order = new WithdrawalOrder
+        await _unitOfWork.WithdrawalOrders.AddAsync(new WithdrawalOrder
         {
             OrderDate = orderDto.OrderDate,
             WarehouseId = orderDto.WarehouseId,
-            WithdrawalOrderDetails = orderDto.Items.Select(item => new WithdrawalOrderDetail
-            {
-                ItemId = item.ItemId,
-                Quantity = item.Quantity
-            }).ToList()
-        };
-
-        await _unitOfWork.WithdrawalOrders.AddAsync(order);
+            WithdrawalOrderDetails = orderDto.Items.Select(ToDetail).ToList()
+        });
     }
 
     public async Task UpdateOrderAsync(WithdrawalOrderDTO orderDto)
@@ -97,31 +48,56 @@ public class WithdrawalOrderService : IWithdrawalOrderService
 
         existingOrder.OrderDate = orderDto.OrderDate;
         existingOrder.WarehouseId = orderDto.WarehouseId;
-
-        // Clear existing details and add updated ones
-        existingOrder.WithdrawalOrderDetails.Clear();
-        foreach (var item in orderDto.Items)
-        {
-            existingOrder.WithdrawalOrderDetails.Add(new WithdrawalOrderDetail
-            {
-                ItemId = item.ItemId,
-                Quantity = item.Quantity
-            });
-        }
+        ReplaceDetails(existingOrder, orderDto.Items);
 
         await _unitOfWork.WithdrawalOrders.UpdateAsync(existingOrder);
     }
 
-    public async Task DeleteAsync(int id)
+    public async Task DeleteAsync(int id) =>
+        await _unitOfWork.WithdrawalOrders.DeleteAsync(await _unitOfWork.WithdrawalOrders.GetByIdAsync(id));
+
+    public async Task<IEnumerable<WithdrawalOrderDTO>> GetOrdersByDateRange(DateTime startDate, DateTime endDate) =>
+        ToDtos(await _unitOfWork.WithdrawalOrders.GetByDateRangeAsync(startDate, endDate));
+
+    public async Task<IEnumerable<WithdrawalOrderDTO>> GetOrdersByWarehouse(int warehouseId) =>
+        ToDtos(await _unitOfWork.WithdrawalOrders.GetByWarehouseAsync(warehouseId));
+
+    private async Task DeductStockAsync(int warehouseId, WithdrawalOrderItemDTO item)
     {
-        var order = await _unitOfWork.WithdrawalOrders.GetByIdAsync(id);
-        await _unitOfWork.WithdrawalOrders.DeleteAsync(order);
+        var stockItem = await _unitOfWork.StockItems.GetByIdAsync(warehouseId, item.ItemId);
+
+        if (HasInsufficientStock(stockItem, item.Quantity))
+            throw new InvalidOperationException($"Insufficient quantity for item: {item.ItemName}");
+
+        stockItem.Quantity -= item.Quantity;
+        await _unitOfWork.StockItems.UpdateAsync(stockItem);
     }
 
-    public async Task<IEnumerable<WithdrawalOrderDTO>> GetOrdersByDateRange(DateTime startDate, DateTime endDate)
+    private static bool HasInsufficientStock(StockItem? stockItem, int requestedQuantity) =>
+        stockItem == null || stockItem.Quantity < requestedQuantity;
+
+    private static void ReplaceDetails(WithdrawalOrder order, IEnumerable<WithdrawalOrderItemDTO> items)
     {
-        var orders = await _unitOfWork.WithdrawalOrders.GetByDateRangeAsync(startDate, endDate);
-        var result = orders.Select(order => new WithdrawalOrderDTO
+        order.WithdrawalOrderDetails.Clear();
+        foreach (var item in items)
+            order.WithdrawalOrderDetails.Add(ToDetail(item));
+    }
+
+    private static WithdrawalOrderDetail ToDetail(WithdrawalOrderItemDTO item)
+    {
+        return new WithdrawalOrderDetail
+        {
+            ItemId = item.ItemId,
+            Quantity = item.Quantity
+        };
+    }
+
+    private static IEnumerable<WithdrawalOrderDTO> ToDtos(IEnumerable<WithdrawalOrder> orders) =>
+        orders.Select(ToDto);
+
+    private static WithdrawalOrderDTO ToDto(WithdrawalOrder order)
+    {
+        return new WithdrawalOrderDTO
         {
             OrderId = order.Id,
             OrderDate = order.OrderDate,
@@ -133,29 +109,6 @@ public class WithdrawalOrderService : IWithdrawalOrderService
                 ItemName = detail.Item?.Name,
                 Quantity = detail.Quantity
             }).ToList()
-        });
-
-        return result;
+        };
     }
-
-    public async Task<IEnumerable<WithdrawalOrderDTO>> GetOrdersByWarehouse(int warehouseId)
-    {
-        var orders = await _unitOfWork.WithdrawalOrders.GetByWarehouseAsync(warehouseId);
-        var result = orders.Select(order => new WithdrawalOrderDTO
-        {
-            OrderId = order.Id,
-            OrderDate = order.OrderDate,
-            WarehouseId = order.WarehouseId,
-            WarehouseName = order.Warehouse?.Name,
-            Items = order.WithdrawalOrderDetails.Select(detail => new WithdrawalOrderItemDTO
-            {
-                ItemId = detail.ItemId,
-                ItemName = detail.Item?.Name,
-                Quantity = detail.Quantity
-            }).ToList()
-        });
-
-        return result;
-    }
-
 }
