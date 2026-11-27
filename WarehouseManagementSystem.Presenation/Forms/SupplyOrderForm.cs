@@ -1,43 +1,40 @@
-﻿using WarehouseManagementSystem.Business.Services;
+﻿using WarehouseManagementSystem.Business.Interfaces;
 using WarehouseManagementSystem.Core.DTOs;
-using WarehouseManagementSystem.Data;
-using WarehouseManagementSystem.Data.UOW;
-using WarehouseManagementSystem.Data.UOW.Interfaces;
 
 namespace WarehouseManagementSystem.Presenation.Forms;
 
 public partial class SupplyOrderForm : Form
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly SupplyOrderService _supplyOrderService;
-    private readonly WarehouseService _warehouseService;
-    private readonly SupplierService _supplierService;
+    private readonly ISupplyOrderService _supplyOrderService;
+    private readonly IWarehouseService _warehouseService;
+    private readonly ISupplierService _supplierService;
 
-    public SupplyOrderForm()
+    public SupplyOrderForm(
+        ISupplyOrderService supplyOrderService,
+        IWarehouseService warehouseService,
+        ISupplierService supplierService)
     {
         InitializeComponent();
 
-        _unitOfWork = new UnitOfWork(new WMSDbContext());
-        _supplyOrderService = new SupplyOrderService(_unitOfWork);
-        _warehouseService = new WarehouseService(_unitOfWork);
-        _supplierService = new SupplierService(_unitOfWork);
+        _supplyOrderService = supplyOrderService;
+        _warehouseService = warehouseService;
+        _supplierService = supplierService;
     }
+
     private async Task LoadData()
     {
-        var orders = await _supplyOrderService.GetAllSupplyOrdersDetailsAsync();
-        dgvSupplyOrder.DataSource = orders;
+        dgvSupplyOrder.DataSource = await _supplyOrderService.GetAllSupplyOrdersDetailsAsync();
 
-        var warehouses = await _warehouseService.GetAllWarehousesAsync();
-        cmbWarehouses.DataSource = null;
-        cmbWarehouses.DataSource = warehouses;
-        cmbWarehouses.DisplayMember = "Name";
-        cmbWarehouses.ValueMember = "Id";
+        BindLookup(cmbWarehouses, await _warehouseService.GetAllWarehousesAsync());
+        BindLookup(cmbSuppliers, await _supplierService.GetAllSuppliersAsync());
+    }
 
-        var suppliers = await _supplierService.GetAllSuppliersAsync();
-        cmbSuppliers.DataSource = null;
-        cmbSuppliers.DataSource = suppliers;
-        cmbSuppliers.DisplayMember = "Name";
-        cmbSuppliers.ValueMember = "Id";
+    private static void BindLookup(ComboBox comboBox, object dataSource)
+    {
+        comboBox.DataSource = null;
+        comboBox.DataSource = dataSource;
+        comboBox.DisplayMember = "Name";
+        comboBox.ValueMember = "Id";
     }
 
     private void SetupDataGridView()
@@ -46,34 +43,34 @@ public partial class SupplyOrderForm : Form
 
         dgvSupplyOrder.Columns.Clear();
 
-        dgvSupplyOrder.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "OrderNumber", HeaderText = "Order #" });
-        dgvSupplyOrder.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "OrderDate", HeaderText = "Date" });
-        dgvSupplyOrder.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "SupplierName", HeaderText = "Supplier" });
-        dgvSupplyOrder.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "WarehouseName", HeaderText = "Warehouse" });
-        dgvSupplyOrder.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ItemName", HeaderText = "Item" });
-        dgvSupplyOrder.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Quantity", HeaderText = "Quantity" });
-        dgvSupplyOrder.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ProductionDate", HeaderText = "Production Date" });
-        dgvSupplyOrder.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "ExpirationDate", HeaderText = "Expiration Date" });
+        AddColumn("OrderNumber", "Order #");
+        AddColumn("OrderDate", "Date");
+        AddColumn("SupplierName", "Supplier");
+        AddColumn("WarehouseName", "Warehouse");
+        AddColumn("ItemName", "Item");
+        AddColumn("Quantity", "Quantity");
+        AddColumn("ProductionDate", "Production Date");
+        AddColumn("ExpirationDate", "Expiration Date");
 
         dgvSupplyOrder.AllowUserToAddRows = false;
         dgvSupplyOrder.ReadOnly = true;
     }
 
-    private async void SupplyOrderForm_Load(object sender, EventArgs e)
+    private void AddColumn(string dataPropertyName, string headerText)
     {
-        await LoadData();
-        SetupDataGridView();
+        dgvSupplyOrder.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = dataPropertyName,
+            HeaderText = headerText
+        });
     }
 
-    private async void btnAddOrder_Click(object sender, EventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(txtItemCode.Text) || string.IsNullOrWhiteSpace(txtItemName.Text))
-        {
-            MessageBox.Show("Please enter an item code and name.");
-            return;
-        }
+    private bool HasItemCodeAndName() =>
+        !string.IsNullOrWhiteSpace(txtItemCode.Text) && !string.IsNullOrWhiteSpace(txtItemName.Text);
 
-        var orderDto = new SupplyOrderDto
+    private SupplyOrderDto BuildOrderFromInputs()
+    {
+        return new SupplyOrderDto
         {
             SupplierId = (int)cmbSuppliers.SelectedValue,
             WarehouseId = (int)cmbWarehouses.SelectedValue,
@@ -84,15 +81,32 @@ public partial class SupplyOrderForm : Form
             ProductionDate = dtpProductionDate.Value,
             ExpirationDate = dtpExpirationDate.Value,
         };
+    }
+
+    private async void SupplyOrderForm_Load(object sender, EventArgs e)
+    {
+        await LoadData();
+        SetupDataGridView();
+    }
+
+    private async void btnAddOrder_Click(object sender, EventArgs e)
+    {
+        if (!HasItemCodeAndName())
+        {
+            Dialogs.ShowWarning("Please enter an item code and name.");
+            return;
+        }
+
+        var orderDto = BuildOrderFromInputs();
 
         try
         {
             await _supplyOrderService.AddSupplyOrderAsync(orderDto);
-            MessageBox.Show("Supply Order added successfully!");
+            Dialogs.ShowSuccess("Supply Order added successfully!");
         }
         catch (Exception ex)
         {
-            MessageBox.Show("Error: " + ex.Message);
+            Dialogs.ShowError(ex);
         }
     }
 }
