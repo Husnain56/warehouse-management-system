@@ -1,4 +1,6 @@
-﻿public interface IRepository<T> where T : class
+﻿using System.Linq.Expressions;
+
+public interface IRepository<T> where T : class
 {
     Task<T> GetByIdAsync(params object[] keyValues);
     Task<IEnumerable<T>> GetAllAsync();
