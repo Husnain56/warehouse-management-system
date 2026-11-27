@@ -23,17 +23,19 @@ namespace WarehouseManagementSystem.Presenation.Forms
         private readonly WarehouseService _warehouseService;
         private readonly UnitOfWork _unitOfWork;
         private readonly ItemService _itemService;
+        private readonly ItemStockQueryService _itemStockQueryService;
         public ItemsForm()
         {
             InitializeComponent();
             _unitOfWork = new UnitOfWork(new WMSDbContext());
             _itemService = new ItemService(_unitOfWork);
+            _itemStockQueryService = new ItemStockQueryService(_unitOfWork);
             _warehouseService = new WarehouseService(_unitOfWork);
         }
 
         private async Task LoadItems()
         {
-            var itemsInWarehouses = await _itemService.GetItemsInWarehousesAsync();
+            var itemsInWarehouses = await _itemStockQueryService.GetItemsInWarehousesAsync();
             dgvItems.DataSource = itemsInWarehouses;
             dgvItems.Columns["ItemId"].Visible = false;
             dgvItems.ReadOnly = true;
@@ -103,7 +105,7 @@ namespace WarehouseManagementSystem.Presenation.Forms
                 MessageBox.Show("New item added successfully!");
 
                 // Refresh DataGridView to show the updated warehouse stock
-                dgvItems.DataSource = await _itemService.GetItemsByWarehousesAsync(new List<int> { selectedWarehouse.Id });
+                dgvItems.DataSource = await _itemStockQueryService.GetItemsByWarehousesAsync(new List<int> { selectedWarehouse.Id });
 
                 // Clear input fields
                 ResetFormInput();
@@ -165,7 +167,7 @@ namespace WarehouseManagementSystem.Presenation.Forms
             if (!selectedWarehouseIds.Any()) return; // No warehouses selected, exit early
 
             // Fetch items from the selected warehouses
-            var items = await _itemService.GetItemsByWarehousesAsync(selectedWarehouseIds);
+            var items = await _itemStockQueryService.GetItemsByWarehousesAsync(selectedWarehouseIds);
 
             // Clear DataGridView
             dgvItems.DataSource = null;

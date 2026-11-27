@@ -19,7 +19,7 @@ namespace WarehouseManagementSystem.Presenation.Forms
     public partial class StockTransferForm : Form
     {
         private readonly StockTransferService _stockTransferService;
-        private readonly ItemService _itemService;
+        private readonly ItemStockQueryService _itemStockQueryService;
         private readonly WarehouseService _warehouseService;
         private readonly UnitOfWork _unitOfWork;
 
@@ -28,7 +28,7 @@ namespace WarehouseManagementSystem.Presenation.Forms
             InitializeComponent();
             _unitOfWork = new UnitOfWork(new WMSDbContext());
             _stockTransferService = new StockTransferService(_unitOfWork);
-            _itemService = new ItemService(_unitOfWork);
+            _itemStockQueryService = new ItemStockQueryService(_unitOfWork);
             _warehouseService = new WarehouseService(_unitOfWork);
         }
 
@@ -112,7 +112,7 @@ namespace WarehouseManagementSystem.Presenation.Forms
         {
             dgvStockItems.Rows.Clear(); // Clear existing rows
 
-            var stockItems = await _itemService.GetItemsByWarehouseIdAsync(warehouseId);
+            var stockItems = await _itemStockQueryService.GetItemsByWarehouseIdAsync(warehouseId);
 
             foreach (var stock in stockItems)
             {

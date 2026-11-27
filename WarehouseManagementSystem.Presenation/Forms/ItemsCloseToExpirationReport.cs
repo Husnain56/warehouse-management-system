@@ -17,12 +17,12 @@ namespace WarehouseManagementSystem.Presenation.Forms
     public partial class ItemsCloseToExpirationReport : Form
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly ItemService _itemService;
+        private readonly ItemStockQueryService _itemStockQueryService;
         public ItemsCloseToExpirationReport()
         {
             InitializeComponent();
             _unitOfWork = new UnitOfWork(new Data.WMSDbContext());
-            _itemService = new ItemService(_unitOfWork);
+            _itemStockQueryService = new ItemStockQueryService(_unitOfWork);
         }
 
         private async void btnGenerateReport_Click(object sender, EventArgs e)
@@ -37,7 +37,7 @@ namespace WarehouseManagementSystem.Presenation.Forms
                     return;
                 }
 
-                var dataTable = await _itemService.GetItemsCloseToExpirationAsync(daysThreshold);
+                var dataTable = await _itemStockQueryService.GetItemsCloseToExpirationAsync(daysThreshold);
 
                 if (dataTable.Rows.Count == 0)
                 {
