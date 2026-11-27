@@ -10,5 +10,6 @@ namespace WarehouseManagementSystem.Data.Repositories.Interfaces
     public interface ISupplyOrderRepository : IRepository<SupplyOrder>
     {
         Task<List<SupplyOrder>> GetOrdersBySupplierIdAsync(int supplierId);
+        Task<List<SupplyOrder>> GetAllWithDetailsAsync();
     }
 }

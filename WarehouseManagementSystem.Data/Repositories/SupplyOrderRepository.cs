@@ -22,5 +22,15 @@ namespace WarehouseManagementSystem.Data.Repositories
                 .Where(o => o.SupplierId == supplierId)
                 .ToListAsync();
         }
+
+        public async Task<List<SupplyOrder>> GetAllWithDetailsAsync()
+        {
+            return await _dbContext.SupplyOrders
+                .Include(o => o.Supplier)
+                .Include(o => o.Warehouse)
+                .Include(o => o.SupplyOrderDetails)
+                    .ThenInclude(d => d.Item)
+                .ToListAsync();
+        }
     }
 }
