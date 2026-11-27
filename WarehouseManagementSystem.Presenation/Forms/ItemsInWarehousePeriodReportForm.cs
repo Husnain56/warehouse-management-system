@@ -10,11 +10,13 @@ namespace WarehouseManagementSystem.Presenation.Forms
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly WarehouseService _warehouseService;
+        private readonly WarehouseReportService _warehouseReportService;
         public ItemsInWarehousePeriodReportForm()
         {
             InitializeComponent();
             _unitOfWork = new UnitOfWork(new Data.WMSDbContext());
             _warehouseService = new WarehouseService(_unitOfWork);
+            _warehouseReportService = new WarehouseReportService(_unitOfWork);
 
             LoadWarehouses();
         }
@@ -44,7 +46,7 @@ namespace WarehouseManagementSystem.Presenation.Forms
                 DateTime toDate = dtpToDate.Value;
 
                 // Get the data from the service
-                var dataTable = await _warehouseService.GetItemsInWarehouseForPeriod(selectedWarehouse.Id, fromDate, toDate);
+                var dataTable = await _warehouseReportService.GetItemsInWarehouseForPeriod(selectedWarehouse.Id, fromDate, toDate);
 
                 if (dataTable.Rows.Count == 0)
                 {

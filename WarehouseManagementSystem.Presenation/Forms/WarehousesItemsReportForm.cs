@@ -19,12 +19,14 @@ namespace WarehouseManagementSystem.Presenation.Forms
     public partial class WarehousesItemsReportForm : Form
     {
         private readonly WarehouseService _warehouseService;
+        private readonly WarehouseReportService _warehouseReportService;
         private readonly IUnitOfWork _unitOfWork;
         public WarehousesItemsReportForm()
         {
             InitializeComponent();
             _unitOfWork = new UnitOfWork(new WMSDbContext());
             _warehouseService = new WarehouseService(_unitOfWork);
+            _warehouseReportService = new WarehouseReportService(_unitOfWork);
             LoadWarehouses();
         }
 
@@ -57,7 +59,7 @@ namespace WarehouseManagementSystem.Presenation.Forms
                 LocalReport report = new LocalReport(reportPath);
 
                 // Get the data from the service
-                var dataTable = await _warehouseService.GetItemsReport(selectedWarehouseIds);
+                var dataTable = await _warehouseReportService.GetItemsReport(selectedWarehouseIds);
 
                 // Add the data source to the report
                 report.AddDataSource("WarehousesItemsDataSet", dataTable);

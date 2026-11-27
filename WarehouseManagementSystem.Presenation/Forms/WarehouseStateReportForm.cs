@@ -18,6 +18,7 @@ namespace WarehouseManagementSystem.Presenation.Forms
     public partial class WarehouseStateReportForm : Form
     {
         private readonly WarehouseService _warehouseService;
+        private readonly WarehouseReportService _warehouseReportService;
         private readonly IUnitOfWork _unitOfWork;
 
         public WarehouseStateReportForm()
@@ -25,6 +26,7 @@ namespace WarehouseManagementSystem.Presenation.Forms
             InitializeComponent();
             _unitOfWork = new UnitOfWork(new WMSDbContext());
             _warehouseService = new WarehouseService(_unitOfWork);
+            _warehouseReportService = new WarehouseReportService(_unitOfWork);
             LoadWarehouses();
         }
 
@@ -47,7 +49,7 @@ namespace WarehouseManagementSystem.Presenation.Forms
                 LocalReport report = new LocalReport(reportPath);
 
                 // Get the data from the service
-                DataTable dataTable = await _warehouseService.GetWarehouseStatusReport(warehouseId);
+                DataTable dataTable = await _warehouseReportService.GetWarehouseStatusReport(warehouseId);
 
                 // Add the data source to the report
                 report.AddDataSource("WarehouseStatusDataSet", dataTable);
