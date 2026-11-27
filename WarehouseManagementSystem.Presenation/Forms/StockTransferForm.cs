@@ -1,262 +1,228 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Documents;
-using System.Windows.Forms;
-using WarehouseManagementSystem.Business.Services;
+﻿using WarehouseManagementSystem.Business.Interfaces;
 using WarehouseManagementSystem.Core.DTOs;
-using WarehouseManagementSystem.Data;
 using WarehouseManagementSystem.Data.Models;
-using WarehouseManagementSystem.Data.UOW;
 
-namespace WarehouseManagementSystem.Presenation.Forms
+namespace WarehouseManagementSystem.Presenation.Forms;
+
+public partial class StockTransferForm : Form
 {
-    public partial class StockTransferForm : Form
+    private const int DefaultTransferQuantity = 0;
+
+    private static class Column
     {
-        private readonly StockTransferService _stockTransferService;
-        private readonly ItemStockQueryService _itemStockQueryService;
-        private readonly WarehouseService _warehouseService;
-        private readonly UnitOfWork _unitOfWork;
+        public const string Select = "Select";
+        public const string ItemId = "ItemId";
+        public const string ItemName = "ItemName";
+        public const string AvailableQuantity = "AvailableQuantity";
+        public const string ProductionDate = "ProductionDate";
+        public const string ExpirationDate = "ExpirationDate";
+        public const string TransferQuantity = "TransferQuantity";
+    }
 
-        public StockTransferForm()
+    private readonly IStockTransferService _stockTransferService;
+    private readonly IItemStockQueryService _itemStockQueryService;
+    private readonly IWarehouseService _warehouseService;
+
+    public StockTransferForm(
+        IStockTransferService stockTransferService,
+        IItemStockQueryService itemStockQueryService,
+        IWarehouseService warehouseService)
+    {
+        InitializeComponent();
+        _stockTransferService = stockTransferService;
+        _itemStockQueryService = itemStockQueryService;
+        _warehouseService = warehouseService;
+    }
+
+    private void InitializeDataGridView()
+    {
+        dgvStockItems.Columns.Clear();
+        dgvStockItems.AutoGenerateColumns = false;
+        dgvStockItems.AllowUserToDeleteRows = false;
+
+        dgvStockItems.Columns.Add(new DataGridViewCheckBoxColumn { Name = Column.Select, HeaderText = "✔", Width = 40 });
+        AddReadOnlyColumn(Column.ItemId, "Item Id", "ItemId", 150, visible: false);
+        AddReadOnlyColumn(Column.ItemName, "Item Name", "ItemName", 150);
+        AddReadOnlyColumn(Column.AvailableQuantity, "Available Qty", "Quantity", 120);
+        AddReadOnlyColumn(Column.ProductionDate, "Production Date", "ProductionDate", 200);
+        AddReadOnlyColumn(Column.ExpirationDate, "Expiration Date", "ExpirationDate", 200);
+        dgvStockItems.Columns.Add(new DataGridViewTextBoxColumn { Name = Column.TransferQuantity, HeaderText = "Transfer Qty", Width = 120 });
+    }
+
+    private void AddReadOnlyColumn(string name, string headerText, string dataPropertyName, int width, bool visible = true)
+    {
+        dgvStockItems.Columns.Add(new DataGridViewTextBoxColumn
         {
-            InitializeComponent();
-            _unitOfWork = new UnitOfWork(new WMSDbContext());
-            _stockTransferService = new StockTransferService(_unitOfWork);
-            _itemStockQueryService = new ItemStockQueryService(_unitOfWork);
-            _warehouseService = new WarehouseService(_unitOfWork);
-        }
+            Name = name,
+            HeaderText = headerText,
+            DataPropertyName = dataPropertyName,
+            ReadOnly = true,
+            Width = width,
+            Visible = visible
+        });
+    }
 
-        private void InitializeDataGridView()
+    private async Task LoadStockItemsAsync(int warehouseId)
+    {
+        dgvStockItems.Rows.Clear();
+
+        foreach (var stock in await _itemStockQueryService.GetItemsByWarehouseIdAsync(warehouseId))
+            AddStockRow(stock);
+    }
+
+    private void AddStockRow(ItemWarehouseDto stock)
+    {
+        dgvStockItems.Rows.Add(false,
+                               stock.ItemId,
+                               stock.ItemName,
+                               stock.Quantity,
+                               stock.ProductionDate.ToShortDateString(),
+                               stock.ExpirationDate.ToShortDateString(),
+                               DefaultTransferQuantity);
+    }
+
+    private async Task LoadWarehousesIntoCmb()
+    {
+        try
         {
-            dgvStockItems.Columns.Clear();
-            dgvStockItems.AutoGenerateColumns = false;
-            dgvStockItems.AllowUserToDeleteRows = false;
-
-            // Checkbox column for selection
-            DataGridViewCheckBoxColumn chkColumn = new DataGridViewCheckBoxColumn
+            var warehouses = await _warehouseService.GetAllWarehousesAsync();
+            if (warehouses == null || !warehouses.Any())
             {
-                Name = "Select",
-                HeaderText = "✔",
-                Width = 40
-            };
-            dgvStockItems.Columns.Add(chkColumn);
-
-            // Item Id column
-            dgvStockItems.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = "ItemId",
-                HeaderText = "Item Id",
-                DataPropertyName = "ItemId",
-                ReadOnly = true,
-                Width = 150,
-                Visible = false
-            });
-
-            // Item Name column
-            dgvStockItems.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = "ItemName",
-                HeaderText = "Item Name",
-                DataPropertyName = "ItemName",
-                ReadOnly = true,
-                Width = 150
-            });
-
-            // Available Quantity column
-            dgvStockItems.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = "AvailableQuantity",
-                HeaderText = "Available Qty",
-                DataPropertyName = "Quantity",
-                ReadOnly = true,
-                Width = 120
-            });
-
-            // Production Date column
-            dgvStockItems.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = "ProductionDate",
-                HeaderText = "Production Date",
-                DataPropertyName = "ProductionDate",
-                ReadOnly = true,
-                Width = 200
-            });
-
-            // Expiration Date column
-            dgvStockItems.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = "ExpirationDate",
-                HeaderText = "Expiration Date",
-                DataPropertyName = "ExpirationDate",
-                ReadOnly = true,
-                Width = 200
-            });
-
-            // Transfer Quantity column (Editable)
-            DataGridViewTextBoxColumn transferQtyColumn = new DataGridViewTextBoxColumn
-            {
-                Name = "TransferQuantity",
-                HeaderText = "Transfer Qty",
-                Width = 120
-            };
-            dgvStockItems.Columns.Add(transferQtyColumn);
-        }
-
-        private async void LoadStockItems(int warehouseId)
-        {
-            dgvStockItems.Rows.Clear(); // Clear existing rows
-
-            var stockItems = await _itemStockQueryService.GetItemsByWarehouseIdAsync(warehouseId);
-
-            foreach (var stock in stockItems)
-            {
-                dgvStockItems.Rows.Add(false,
-                                       stock.ItemId,
-                                       stock.ItemName,
-                                       stock.Quantity,
-                                       stock.ProductionDate.ToShortDateString(),  // Get from StockItem
-                                       stock.ExpirationDate.ToShortDateString(),  // Get from StockItem
-                                       0); // Default transfer quantity = 0
-            }
-        }
-
-        private async Task LoadWarehousesIntoCmb()
-        {
-            try
-            {
-                var warehouses = await _warehouseService.GetAllWarehousesAsync();
-                if (warehouses == null || !warehouses.Any())
-                {
-                    MessageBox.Show("No warehouses found.");
-                    return;
-                }
-
-                // Clone the list to prevent reference issues
-                cmbSourceWarehouse.DataSource = null;
-                cmbSourceWarehouse.DataSource = warehouses.ToList();
-                cmbSourceWarehouse.DisplayMember = "Name";
-                cmbSourceWarehouse.ValueMember = "Id";
-
-                cmbDestinationWarehouse.DataSource = null;
-                cmbDestinationWarehouse.DataSource = warehouses.ToList();
-                cmbDestinationWarehouse.DisplayMember = "Name";
-                cmbDestinationWarehouse.ValueMember = "Id";
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error loading warehouses: {ex.Message}");
-            }
-        }
-
-        private async void btnLoadItems_Click(object sender, EventArgs e)
-        {
-            int sourceWarehouseId = (int)cmbSourceWarehouse.SelectedValue;
-
-            LoadStockItems(sourceWarehouseId);
-        }
-
-        private async void btnTransferStock_Click(object sender, EventArgs e)
-        {
-            if (cmbSourceWarehouse.SelectedItem == null || cmbDestinationWarehouse.SelectedItem == null)
-            {
-                MessageBox.Show("Please select both source and destination warehouses.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("No warehouses found.");
                 return;
             }
 
-            int sourceWarehouseId = ((Warehouse)cmbSourceWarehouse.SelectedItem).Id;
-            int destinationWarehouseId = ((Warehouse)cmbDestinationWarehouse.SelectedItem).Id;
-
-            if (sourceWarehouseId == destinationWarehouseId)
-            {
-                MessageBox.Show("Source and destination warehouses cannot be the same.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            //var selectedItems = new List<StockTransferDto>();
-            StockTransferDto transferDto = new StockTransferDto();
-
-            foreach (DataGridViewRow row in dgvStockItems.Rows)
-            {
-                if (Convert.ToBoolean(row.Cells["Select"].Value)) // Checkbox is checked
-                {
-                    int itemId = (int)row.Cells["ItemId"].Value;
-                    int availableQuantity = (int)row.Cells["AvailableQuantity"].Value;
-                    DateTime expirationDate = DateTime.Parse(row.Cells["ExpirationDate"].Value.ToString());
-
-                    int transferQuantity;
-                    if (!int.TryParse(row.Cells["TransferQuantity"].Value?.ToString(), out transferQuantity) || transferQuantity <= 0)
-                    {
-                        MessageBox.Show($"Invalid transfer quantity for {row.Cells["ItemName"].Value}.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return;
-                    }
-
-                    if (transferQuantity > availableQuantity)
-                    {
-                        MessageBox.Show($"Transfer quantity exceeds available stock for {row.Cells["ItemName"].Value}.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return;
-                    }
-
-                    if (expirationDate < DateTime.Today)
-                    {
-                        MessageBox.Show($"Cannot transfer expired item: {row.Cells["ItemName"].Value}.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return;
-                    }
-
-                    transferDto.Items.Add(new StockTransferItemDto
-                    {
-                        ItemId = itemId,
-                        Quantity = transferQuantity,
-                    });
-
-                    transferDto.DestinationWarehouseId = destinationWarehouseId;
-                    transferDto.SourceWarehouseId = sourceWarehouseId;
-                    transferDto.ProductionDate = DateTime.Parse(row.Cells["ProductionDate"].Value.ToString());
-                    transferDto.ExpirationDate = expirationDate;
-                    transferDto.TransferDate = DateTime.UtcNow;
-
-                    //selectedItems.Add(new StockTransferDto
-                    //{
-                    //    ItemId = itemId,
-                    //    SourceWarehouseId = sourceWarehouseId,
-                    //    DestinationWarehouseId = destinationWarehouseId,
-                    //    TransferQuantity = transferQuantity,
-                    //    ProductionDate = DateTime.Parse(row.Cells["ProductionDate"].Value.ToString()),
-                    //    ExpirationDate = expirationDate,
-                    //    TransferDate = DateTime.UtcNow
-                    //});
-                }
-            }
-
-            if (transferDto.Items.Count == 0)
-            {
-                MessageBox.Show("Please select at least one item to transfer.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            // Call Business Logic to Handle the Transfer
-            bool success = await _stockTransferService.TransferStockAsync(transferDto);
-
-            if (success)
-            {
-                MessageBox.Show("Stock transferred successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                LoadStockItems(sourceWarehouseId); // Refresh grid after transfer
-            }
-            else
-            {
-                MessageBox.Show("Failed to transfer stock.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            BindToOwnWarehouseList(cmbSourceWarehouse, warehouses);
+            BindToOwnWarehouseList(cmbDestinationWarehouse, warehouses);
         }
-
-        private void StockTransferForm_Load(object sender, EventArgs e)
+        catch (Exception ex)
         {
-            LoadWarehousesIntoCmb();
-            InitializeDataGridView();
+            MessageBox.Show($"Error loading warehouses: {ex.Message}");
         }
+    }
+
+    private static void BindToOwnWarehouseList(ComboBox comboBox, IEnumerable<Warehouse> warehouses)
+    {
+        comboBox.DataSource = null;
+        comboBox.DataSource = warehouses.ToList();
+        comboBox.DisplayMember = "Name";
+        comboBox.ValueMember = "Id";
+    }
+
+    private bool TryGetSelectedWarehouseIds(out int sourceWarehouseId, out int destinationWarehouseId)
+    {
+        sourceWarehouseId = 0;
+        destinationWarehouseId = 0;
+
+        if (cmbSourceWarehouse.SelectedItem is not Warehouse source ||
+            cmbDestinationWarehouse.SelectedItem is not Warehouse destination)
+        {
+            Dialogs.ShowError("Please select both source and destination warehouses.");
+            return false;
+        }
+
+        sourceWarehouseId = source.Id;
+        destinationWarehouseId = destination.Id;
+
+        if (sourceWarehouseId == destinationWarehouseId)
+        {
+            Dialogs.ShowError("Source and destination warehouses cannot be the same.");
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool TryBuildTransfer(int sourceWarehouseId, int destinationWarehouseId, out StockTransferDto transferDto)
+    {
+        transferDto = new StockTransferDto
+        {
+            SourceWarehouseId = sourceWarehouseId,
+            DestinationWarehouseId = destinationWarehouseId,
+            TransferDate = DateTime.UtcNow
+        };
+
+        foreach (var row in dgvStockItems.Rows.Cast<DataGridViewRow>().Where(IsSelected))
+        {
+            if (!TryReadTransferItem(row, out var item))
+                return false;
+
+            transferDto.Items.Add(item);
+        }
+
+        if (transferDto.Items.Count == 0)
+        {
+            Dialogs.ShowWarning("Please select at least one item to transfer.");
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool TryReadTransferItem(DataGridViewRow row, out StockTransferItemDto item)
+    {
+        item = new StockTransferItemDto();
+
+        if (!TryReadPositiveQuantity(row, out var quantity))
+        {
+            Dialogs.ShowWarning($"Invalid transfer quantity for {GetItemName(row)}.");
+            return false;
+        }
+
+        if (quantity > GetAvailableQuantity(row))
+        {
+            Dialogs.ShowWarning($"Transfer quantity exceeds available stock for {GetItemName(row)}.");
+            return false;
+        }
+
+        if (IsExpired(row))
+        {
+            Dialogs.ShowWarning($"Cannot transfer expired item: {GetItemName(row)}.");
+            return false;
+        }
+
+        item.ItemId = (int)row.Cells[Column.ItemId].Value;
+        item.Quantity = quantity;
+        return true;
+    }
+
+    private static bool IsSelected(DataGridViewRow row) =>
+        Convert.ToBoolean(row.Cells[Column.Select].Value);
+
+    private static bool TryReadPositiveQuantity(DataGridViewRow row, out int quantity) =>
+        int.TryParse(row.Cells[Column.TransferQuantity].Value?.ToString(), out quantity) && quantity > 0;
+
+    private static int GetAvailableQuantity(DataGridViewRow row) =>
+        (int)row.Cells[Column.AvailableQuantity].Value;
+
+    private static bool IsExpired(DataGridViewRow row) =>
+        DateTime.Parse(row.Cells[Column.ExpirationDate].Value.ToString()) < DateTime.Today;
+
+    private static string GetItemName(DataGridViewRow row) =>
+        row.Cells[Column.ItemName].Value?.ToString() ?? string.Empty;
+
+    private async void btnLoadItems_Click(object sender, EventArgs e)
+    {
+        await LoadStockItemsAsync((int)cmbSourceWarehouse.SelectedValue);
+    }
+
+    private async void btnTransferStock_Click(object sender, EventArgs e)
+    {
+        if (!TryGetSelectedWarehouseIds(out var sourceWarehouseId, out var destinationWarehouseId))
+            return;
+
+        if (!TryBuildTransfer(sourceWarehouseId, destinationWarehouseId, out var transferDto))
+            return;
+
+        await _stockTransferService.TransferStockAsync(transferDto);
+
+        Dialogs.ShowSuccess("Stock transferred successfully!");
+        await LoadStockItemsAsync(sourceWarehouseId);
+    }
+
+    private async void StockTransferForm_Load(object sender, EventArgs e)
+    {
+        InitializeDataGridView();
+        await LoadWarehousesIntoCmb();
     }
 }

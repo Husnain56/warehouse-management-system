@@ -17,6 +17,16 @@ internal sealed class FormFactory
     public WarehouseForm CreateWarehouseForm() =>
         new(new WarehouseService(CreateUnitOfWork()));
 
+    public StockTransferForm CreateStockTransferForm()
+    {
+        var unitOfWork = CreateUnitOfWork();
+
+        return new StockTransferForm(
+            new StockTransferService(unitOfWork),
+            new ItemStockQueryService(unitOfWork),
+            new WarehouseService(unitOfWork));
+    }
+
     private static IUnitOfWork CreateUnitOfWork() =>
         new UnitOfWork(new WMSDbContext());
 }
